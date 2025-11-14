@@ -40,7 +40,8 @@ def search_youtube(q: str):
         results.append({
             "videoId": item["id"]["videoId"],
             "title": item["snippet"]["title"],
-            "thumbnail": item["snippet"]["thumbnails"]["high"]["url"]
+            "thumbnail": item["snippet"]["thumbnails"]["high"]["url"],
+            "channelTitle":item["snippet"]["channelTitle"]
         })
 
     return {"results": results}
