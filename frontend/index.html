@@ -1,0 +1,354 @@
+
+<!DOCTYPE html>
+<html>
+<head>
+    <title>YouTube Audio Player</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: #141414;
+            color: #fff;
+            min-height: 100vh;
+        }
+
+        .top-section {
+            background: #000;
+            padding: 40px 60px;
+            border-bottom: 1px solid #2a2a2a;
+        }
+
+        .header h2 {
+            font-size: 28px;
+            font-weight: 700;
+            margin-bottom: 8px;
+            letter-spacing: -0.5px;
+        }
+
+        .header p {
+            color: #8c8c8c;
+            font-size: 15px;
+            font-weight: 400;
+        }
+
+        .search-area {
+            background: #1a1a1a;
+            padding: 50px 60px;
+        }
+
+        .search-box {
+            max-width: 700px;
+            position: relative;
+        }
+
+        #searchInput {
+            width: 100%;
+            background: #2a2a2a;
+            border: 1px solid #3a3a3a;
+            color: #fff;
+            padding: 14px 20px;
+            font-size: 15px;
+            border-radius: 4px;
+            outline: none;
+            transition: all 0.2s;
+        }
+
+        #searchInput:focus {
+            background: #333;
+            border-color: #555;
+        }
+
+        #searchInput::placeholder {
+            color: #666;
+        }
+
+        .search-box button {
+            position: absolute;
+            right: 8px;
+            top: 8px;
+            background: #e50914;
+            color: #fff;
+            border: none;
+            padding: 10px 24px;
+            border-radius: 3px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+            transition: background 0.2s;
+        }
+
+        .search-box button:hover {
+            background: #f40612;
+        }
+
+        .player-area {
+            background: #1a1a1a;
+            padding: 30px 60px;
+            border-top: 1px solid #2a2a2a;
+            border-bottom: 1px solid #2a2a2a;
+        }
+
+        #nowPlaying {
+            font-size: 16px;
+            color: #e5e5e5;
+            margin-bottom: 20px;
+            font-weight: 500;
+        }
+
+        #loading {
+            display: none;
+            font-size: 14px;
+            color: #8c8c8c;
+            margin-bottom: 15px;
+        }
+
+        .controls {
+            display: flex;
+            gap: 12px;
+        }
+
+        .controls button {
+            background: #333;
+            color: #fff;
+            border: 1px solid #444;
+            padding: 10px 20px;
+            border-radius: 3px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+            transition: all 0.2s;
+        }
+
+        .controls button:hover {
+            background: #444;
+            border-color: #555;
+        }
+
+        .results-area {
+            background: #141414;
+            padding: 40px 60px 80px;
+        }
+
+        .results-area h3 {
+            font-size: 22px;
+            font-weight: 600;
+            margin-bottom: 25px;
+            letter-spacing: -0.3px;
+        }
+
+        #results {
+            display: grid;
+            gap: 1px;
+            background: #2a2a2a;
+        }
+
+        #results div {
+            display: flex;
+            align-items: center;
+            padding: 18px 20px;
+            background: #1a1a1a;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        #results div:hover {
+            background: #2a2a2a;
+        }
+
+        #results .active {
+            background: #2a2a2a;
+            border-left: 3px solid #e50914;
+        }
+
+        .thumbnail {
+            width: 140px;
+            height: 78px;
+            object-fit: cover;
+            margin-right: 20px;
+            background: #000;
+        }
+
+        .song-info {
+            flex: 1;
+            font-size: 15px;
+            font-weight: 400;
+            color: #e5e5e5;
+            line-height: 1.4;
+        }
+
+        #player {
+            width: 1px;
+            height: 1px;
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: #666;
+            font-size: 15px;
+        }
+    </style>
+</head>
+<body>
+
+<div class="top-section">
+    <div class="header">
+        <h2>Music Player</h2>
+        <p>Search and play audio from YouTube</p>
+    </div>
+</div>
+
+<div class="search-area">
+    <div class="search-box">
+        <input 
+            type="text" 
+            id="searchInput" 
+            placeholder="Search for songs..."
+        >
+        <button onclick="search()">Search</button>
+    </div>
+</div>
+
+<div class="player-area">
+    <div id="loading">Loading...</div>
+    <div id="nowPlaying">Now Playing: None</div>
+    <div class="controls">
+        <button onclick="playVideo()">Play</button>
+        <button onclick="pauseVideo()">Pause</button>
+    </div>
+</div>
+
+<div class="results-area">
+    <h3>Results</h3>
+    <div id="results">
+        <div class="empty-state">
+            Search for music to see results
+        </div>
+    </div>
+</div>
+
+<div id="player"></div>
+
+<script>
+const API_BASE_URL = "http://127.0.0.1:8000";  
+let player;
+let currentSongDiv = null;
+
+// YouTube player ready
+function onYouTubeIframeAPIReady() {
+    console.log("YT API Loaded!");
+
+    player = new YT.Player('player', {
+        height: '1',
+        width: '1',
+        videoId: '',
+        playerVars: { playsinline: 1 },
+        events: {
+            'onStateChange': onPlayerStateChange
+        }
+    });
+}
+
+function onPlayerStateChange(event) {
+    const loadingDiv = document.getElementById("loading");
+    const nowPlaying = document.getElementById("nowPlaying");
+
+    if (event.data === YT.PlayerState.BUFFERING) {
+        loadingDiv.style.display = "block";
+    }
+    else if (event.data === YT.PlayerState.PLAYING) {
+        loadingDiv.style.display = "none";
+    }
+    else if (event.data === YT.PlayerState.PAUSED) {
+        loadingDiv.style.display = "none";
+    }
+    else if (event.data === YT.PlayerState.ENDED) {
+        loadingDiv.style.display = "none";
+        nowPlaying.innerHTML = "Now Playing: None";
+        if (currentSongDiv) currentSongDiv.classList.remove("active");
+    }
+}
+
+async function search() {
+    const query = document.getElementById("searchInput").value;
+
+    const res = await fetch(`${API_BASE_URL}/search?q=${query}`);
+    const data = await res.json();
+
+    const resultsDiv = document.getElementById("results");
+    resultsDiv.innerHTML = "";
+
+    data.results.forEach(item => {
+    const div = document.createElement("div");
+
+    const img = document.createElement("img");
+    img.src = item.thumbnail;
+    img.className = "thumbnail";
+    img.alt = item.title;
+
+    const songInfo = document.createElement("div");
+    songInfo.className = "song-info";
+    songInfo.innerHTML = `
+    <div style="font-size:16px; font-weight:500; color:#fff;">${item.title}</div>
+    <div style="font-size:13px; color:#999; margin-top:2px;">${item.channelTitle}</div>
+    <div style="font-size:13px; color:#777; margin-top:2px;">
+        ⏱ ${item.duration} &nbsp;&nbsp; • &nbsp;&nbsp; 👁 ${item.views}
+    </div>
+    <div style="font-size:12px; color:#555; margin-top:2px;">
+        Published: ${new Date(item.publishedAt).toDateString()}
+    </div>
+`;
+
+
+    div.appendChild(img);
+    div.appendChild(songInfo);
+    div.onclick = () => playSong(
+    item.videoId, div, item.title, item.channelTitle, item.duration, item.views
+);
+
+
+    resultsDiv.appendChild(div);
+});
+
+}
+
+function playSong(videoId, div, title, channel, duration, views) {
+    if (currentSongDiv) currentSongDiv.classList.remove("active");
+    currentSongDiv = div;
+    currentSongDiv.classList.add("active");
+
+    document.getElementById("nowPlaying").innerHTML = `
+    Now Playing: <span style="color:#fff">${title}</span>
+    <br>
+    <span style="font-size:13px; color:#888;">by ${channel}</span>
+    <br>
+    <span style="font-size:12px; color:#777;">${duration} • ${views}</span>
+`;
+
+
+
+    console.log("Playing:", videoId);
+    player.loadVideoById(videoId);
+    player.playVideo();
+}
+
+function playVideo() {
+    player.playVideo();
+}
+
+function pauseVideo() {
+    player.pauseVideo();
+}
+</script>
+
+<script src="https://www.youtube.com/iframe_api"></script>
+
+</body>
+</html>
